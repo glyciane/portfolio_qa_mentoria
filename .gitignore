@@ -1,0 +1,24 @@
+# Node.js (api/, automacao/)
+node_modules/
+.env
+npm-debug.log*
+
+# Python (se usado em scripts auxiliares)
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Relatórios gerados
+mochawesome-report/
+playwright-report/
+test-results/
+coverage/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

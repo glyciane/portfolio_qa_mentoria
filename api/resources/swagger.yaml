@@ -1,0 +1,553 @@
+openapi: 3.0.3
+info:
+  title: Controle de Despesas API
+  description: >
+    API REST para controle de despesas pessoais — registro de gastos,
+    categorias, formas de pagamento e relatório mensal por categoria.
+    Banco de dados em memória, reiniciado a cada execução do servidor.
+  version: "1.0.0"
+  contact:
+    name: Glyciane Silva Santos
+
+servers:
+  - url: http://localhost:3000
+    description: Ambiente local
+
+tags:
+  - name: Login
+  - name: Despesas
+  - name: Categorias
+  - name: Formas de pagamento
+  - name: Relatórios
+  - name: Seed
+
+paths:
+  /login:
+    post:
+      tags: [Login]
+      summary: Autentica o usuário e retorna um token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Autenticado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: E-mail ou senha inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "422":
+          description: Campos obrigatórios ausentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+
+  /despesas:
+    post:
+      tags: [Despesas]
+      summary: Cria uma nova despesa
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DespesaRequest"
+      responses:
+        "201":
+          description: Despesa criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DespesaResponse"
+        "401":
+          description: Token ausente, inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "404":
+          description: Categoria ou forma de pagamento inexistente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "422":
+          description: Dados inválidos (valor <= 0, data futura, campos ausentes)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+    get:
+      tags: [Despesas]
+      summary: Lista despesas com filtros e paginação
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: mes
+          in: query
+          required: false
+          description: Formato YYYY-MM
+          schema:
+            type: string
+            example: "2026-08"
+        - name: categoriaId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: formaPagamentoId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Lista de despesas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DespesaListResponse"
+        "401":
+          description: Token ausente, inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "422":
+          description: Parâmetros de filtro ou paginação inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+
+  /despesas/{id}:
+    get:
+      tags: [Despesas]
+      summary: Retorna uma despesa pelo id
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DespesaId"
+      responses:
+        "200":
+          description: Despesa encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DespesaResponse"
+        "401":
+          description: Token ausente, inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "404":
+          description: Despesa não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+    put:
+      tags: [Despesas]
+      summary: Atualiza uma despesa (payload completo)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DespesaId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DespesaRequest"
+      responses:
+        "200":
+          description: Despesa atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DespesaResponse"
+        "401":
+          description: Token ausente, inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "404":
+          description: Despesa, categoria ou forma de pagamento não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "422":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+    patch:
+      tags: [Despesas]
+      summary: Atualiza parcialmente uma despesa
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DespesaId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DespesaPatchRequest"
+      responses:
+        "200":
+          description: Despesa atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DespesaResponse"
+        "401":
+          description: Token ausente, inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "404":
+          description: Despesa, categoria ou forma de pagamento não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "422":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+    delete:
+      tags: [Despesas]
+      summary: Remove uma despesa
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DespesaId"
+      responses:
+        "204":
+          description: Despesa removida com sucesso (sem corpo de resposta)
+        "401":
+          description: Token ausente, inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "404":
+          description: Despesa não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+
+  /categorias:
+    get:
+      tags: [Categorias]
+      summary: Lista as categorias fixas
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de categorias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Categoria"
+        "401":
+          description: Token ausente, inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+
+  /formas-pagamento:
+    get:
+      tags: [Formas de pagamento]
+      summary: Lista as formas de pagamento fixas
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de formas de pagamento
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FormaPagamento"
+        "401":
+          description: Token ausente, inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+
+  /relatorios/mensal:
+    get:
+      tags: [Relatórios]
+      summary: Total gasto no mês, com detalhamento por categoria
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: mes
+          in: query
+          required: true
+          description: Formato YYYY-MM
+          schema:
+            type: string
+            example: "2026-08"
+      responses:
+        "200":
+          description: Relatório mensal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelatorioMensalResponse"
+        "401":
+          description: Token ausente, inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "422":
+          description: Parâmetro 'mes' ausente ou em formato inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+
+  /seed:
+    post:
+      tags: [Seed]
+      summary: Reseta o banco em memória para o estado inicial conhecido
+      description: >
+        Endpoint de apoio para automação de testes. Não faz parte das regras
+        de negócio do sistema e não exige autenticação.
+      responses:
+        "200":
+          description: Banco resetado e populado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MensagemResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    DespesaId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, senha]
+      properties:
+        email:
+          type: string
+          format: email
+          example: glyciane@teste.com
+        senha:
+          type: string
+          example: "123456"
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    Categoria:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: Alimentação
+
+    FormaPagamento:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: Pix
+
+    DespesaRequest:
+      type: object
+      required: [valor, descricao, data, categoriaId, formaPagamentoId]
+      properties:
+        valor:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 89.90
+        descricao:
+          type: string
+          example: Supermercado
+        data:
+          type: string
+          format: date
+          example: "2026-08-05"
+        categoriaId:
+          type: integer
+          example: 1
+        formaPagamentoId:
+          type: integer
+          example: 1
+
+    DespesaPatchRequest:
+      type: object
+      description: Todos os campos são opcionais — apenas os enviados são atualizados
+      properties:
+        valor:
+          type: number
+          format: float
+          example: 89.90
+        descricao:
+          type: string
+          example: Supermercado
+        data:
+          type: string
+          format: date
+          example: "2026-08-05"
+        categoriaId:
+          type: integer
+          example: 1
+        formaPagamentoId:
+          type: integer
+          example: 1
+
+    DespesaResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        valor:
+          type: number
+          format: float
+          example: 89.90
+        descricao:
+          type: string
+          example: Supermercado
+        data:
+          type: string
+          format: date
+          example: "2026-08-05"
+        categoriaId:
+          type: integer
+          example: 1
+        formaPagamentoId:
+          type: integer
+          example: 1
+        usuarioId:
+          type: integer
+          example: 1
+        criadoEm:
+          type: string
+          format: date-time
+          example: "2026-08-05T12:00:00.000Z"
+
+    DespesaListResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 3
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        despesas:
+          type: array
+          items:
+            $ref: "#/components/schemas/DespesaResponse"
+
+    CategoriaTotal:
+      type: object
+      properties:
+        categoria:
+          type: string
+          example: Alimentação
+        total:
+          type: number
+          format: float
+          example: 620.00
+
+    RelatorioMensalResponse:
+      type: object
+      properties:
+        mes:
+          type: string
+          example: "2026-08"
+        totalGasto:
+          type: number
+          format: float
+          example: 1450.30
+        porCategoria:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoriaTotal"
+
+    MensagemResponse:
+      type: object
+      properties:
+        mensagem:
+          type: string
+          example: Banco resetado e populado com dados iniciais
+
+    ErroResponse:
+      type: object
+      properties:
+        mensagem:
+          type: string
+          example: Mensagem descritiva do erro
